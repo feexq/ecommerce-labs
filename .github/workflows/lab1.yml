@@ -1,0 +1,46 @@
+name: Lab 1 Grading
+
+on: [push]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "DB_HOST=db" >> .env
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
+          echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
+          echo "APP_URL=${{ secrets.APP_URL }}" >> .env
+          echo "KEY_SERVICE_URL=${{ secrets.KEY_SERVICE_URL }}" >> .env
+          echo "G_URL=${{ secrets.G_URL }}" >> .env
+          echo "G_API_URL=${{ secrets.G_API_URL }}" >> .env
+
+      - name: Install Tools
+        run: sudo apt-get update && sudo apt-get install -y jq curl
+
+      - name: Build and Start
+        run: docker compose up -d
+
+      - name: Wait for Readiness
+        run: |
+          for i in {1..15}; do
+            if curl -s localhost:8080/health; then
+              echo "App is ready!"
+              break
+            fi
+            echo "Waiting..."
+            sleep 3
+          done
+
+      - name: Run Grading Script
+        run: |
+          chmod +x ./tests/lab1_test.sh
+          ./tests/lab1_test.sh

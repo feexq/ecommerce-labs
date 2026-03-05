@@ -36,6 +36,7 @@ ext {
 
 repositories {
 	mavenCentral()
+	maven { url 'https://repo.spring.io/milestone' }
 }
 
 apply from: "${rootProject.projectDir}/gradle/test.gradle"
