@@ -1,0 +1,92 @@
+logging:
+  level:
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web.client: DEBUG
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  profiles:
+    active: keys
+  application:
+    name: game-market
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jws-algorithms: RS256
+          jwk-set-uri: ${KEY_SERVICE_URL}/.well-known/jwks.json
+      client:
+        registration:
+          github:
+            clientId: ${GITHUB_CLIENT_ID}
+            clientSecret: ${GITHUB_CLIENT_SECRET}
+            scope: user:email
+            redirect-uri: ${APP_URL}/login/oauth2/code/github
+            authorization-grant-type: authorization_code
+        provider:
+          github:
+            authorization-uri: ${GITHUB_URL}/login/oauth/authorize
+            token-uri: ${GITHUB_URL}/login/oauth/access_token
+            user-info-uri: ${GITHUB_API_URL}/user
+  jpa:
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        time_zone: UTC
+        jdbc.batch_size: 15
+        order_inserts: true
+        order_updates: true
+        query.fail_on_pagination_over_collection_fetch: true
+        query.in_clause_parameter_padding: true
+        connection.provider_disables_autocommit: true
+    hibernate:
+      ddl-auto: none
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    hikari:
+      auto-commit: false
+      connection-timeout: 30000
+      maximum-pool-size: 10
+      max-lifetime: 1800000
+  liquibase:
+    change-log: classpath:liquibase/changelog.yaml
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+      base-path: /
+  endpoint:
+    health:
+      show-details: always
+
+server:
+  shutdown: graceful
+
+application:
+  key-service:
+    base-path: ${KEY_SERVICE_URL}
+    keys: ${application.key-service.base-path}/key-service/v1/activate
+  feature:
+    toggles:
+      key-activation: false
+      summer-sale: false
+---
+spring:
+  config:
+    activate:
+      on-profile: keys
+application:
+  key-service:
+    base-path: ${KEY_SERVICE_URL}
+    keys: ${application.key-service.base-path}/key-service/v1/activate
+  feature:
+    toggles:
+      key-activation: true
+      summer-sale: true
+

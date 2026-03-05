@@ -1,0 +1,11 @@
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      TZ: Europe/Kyiv
+      PGTZ: Europe/Kyiv
+    ports:
+      - "5555:5432"
