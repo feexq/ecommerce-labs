@@ -4,10 +4,10 @@ WORKDIR /home/gradle/src
 COPY build.gradle settings.gradle ./
 COPY gradle/ ./gradle/
 
-RUN gradle dependencies --no-daemon
+RUN gradle dependencies --no-daemon -q
 
 COPY src/ ./src/
-RUN gradle build -x test --no-daemon
+RUN gradle build -x test --no-daemon -q
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
