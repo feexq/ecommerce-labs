@@ -1,0 +1,66 @@
+name: Lab 2 Pipeline
+
+on:
+  push:
+    branches:
+      - lab2
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        run: |
+          echo "DB_HOST=db" >> .env
+          echo "DB_PORT=5432" >> .env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+          echo "DB_USER=${{ secrets.DB_USER }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+          echo "CLIENT_ID=${{ secrets.CLIENT_ID }}" >> .env
+          echo "CLIENT_SECRET=${{ secrets.CLIENT_SECRET }}" >> .env
+          echo "APP_URL=${{ secrets.APP_URL }}" >> .env
+          echo "KEY_SERVICE_URL=${{ secrets.KEY_SERVICE_URL }}" >> .env
+          echo "G_URL=${{ secrets.G_URL }}" >> .env
+          echo "G_API_URL=${{ secrets.G_API_URL }}" >> .env
+
+      - name: Login to ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get short SHA
+        run: echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+
+
+      - name: Build & Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/ecommerce-app:latest
+            ghcr.io/${{ github.repository_owner }}/ecommerce-app:sha-${{ env.SHORT_SHA }}
+
+      - name: Security Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ghcr.io/${{ github.repository_owner }}/ecommerce-app:latest
+          format: table
+          exit-code: 0
+          severity: HIGH,CRITICAL
+
+      - name: Run Master Validation Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x ./tests/lab2_test.sh
+          ./tests/lab2_test.sh
