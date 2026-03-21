@@ -1,0 +1,41 @@
+replicaCount: 2
+
+image:
+  repository: ghcr.io/feexq/ecommerce-app
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+
+service:
+  type: ClusterIP
+  port: 8080
+
+postgres:
+  image:
+    repository: postgres
+    tag: "15-alpine"
+    pullPolicy: IfNotPresent
+
+db:
+  host: "db"
+  port: "5432"
+  name: "gamemarket"
+  user: "postgres"
+
+app:
+  url: "http://localhost:8080"
+  keyServiceUrl: "http://localhost:8081"
+  gUrl: "https://github.com"
+  gApiUrl: "https://api.github.com"
+
+secret:
+  dbPassword: "postgres"
+  clientId: "funny_client_id"
+  clientSecret: "funny_client_secret"
