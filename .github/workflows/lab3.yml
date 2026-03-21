@@ -1,0 +1,76 @@
+name: Lab 3 Grading
+
+on:
+  push:
+    branches:
+      - lab3
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  k8s-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create KinD cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: kind
+
+      - name: Build and pull images
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/ecommerce-app:latest .
+          docker pull postgres:15-alpine
+
+      - name: Load images into KinD
+        run: |
+          kind load docker-image ghcr.io/${{ github.repository_owner}}/ecommerce-app:latest --name kind
+          kind load docker-image postgres:15-alpine --name kind
+
+      - name: Prepare manifests with envsubst
+        run: |
+          export DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+          export DB_USER="${{ secrets.DB_USER }}"
+          export DB_NAME="${{ secrets.DB_NAME }}"
+          export CLIENT_ID="${{ secrets.CLIENT_ID }}"
+          export CLIENT_SECRET="${{ secrets.CLIENT_SECRET }}"
+          export APP_URL="${{ secrets.APP_URL }}"
+          export KEY_SERVICE_URL="${{ secrets.KEY_SERVICE_URL }}"
+          export G_URL="${{ secrets.G_URL }}"
+          export G_API_URL="${{ secrets.G_API_URL }}"
+
+          mkdir -p k8s_ready
+
+          for file in k8s/*.yaml; do
+            envsubst < "$file" > "k8s_ready/$(basename "$file")"
+          done
+
+          rm -rf k8s && mv k8s_ready k8s
+
+      - name: Apply Kubernetes manifests
+        run: kubectl apply -f k8s/
+
+      - name: Wait for PostgreSQL
+        run: kubectl rollout status deployment/postgres --timeout=120s
+
+      - name: Wait for app
+        run: kubectl rollout status deployment/ecommerce-app --timeout=120s
+
+      - name: Debug on failure
+        if: failure()
+        run: |
+          echo "=== PODS ==="
+          kubectl get pods
+          echo "=== POSTGRES ==="
+          kubectl logs -l app=postgres --tail=50
+          echo "=== APP ==="
+          kubectl logs -l app=ecommerce-app --tail=50
+
+      - name: Run Grading Script
+        run: |
+          chmod +x ./tests/lab3_test.sh
+          ./tests/lab3_test.sh
